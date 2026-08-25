@@ -1,6 +1,11 @@
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Github, Star } from 'lucide-react';
 import { projectRepository } from '../repositories/projectRepository';
 import { useProjectStore } from '../stores/useProjectStore';
 import { exportService } from '../services/exportService';
+import { APP_CONSTANTS } from '../config/constants';
+
+const GITHUB_REPO = 'https://github.com/prajesh8484/compass';
 
 export function Settings() {
   return (
@@ -56,27 +61,29 @@ export function Settings() {
           <h3 id="settings-about-label" style={{ marginBottom: 12 }}>About Compass</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
-              ['Version', '0.1.0'],
-              ['Priority Engine', 'v1 — Deterministic'],
-              ['Storage', 'Local SQLite + Markdown'],
-              ['Network', 'Never'],
+              ['Version', APP_CONSTANTS.APP_VERSION],
+              ['Engine', 'Priority Engine v1'],
+              ['License', 'MIT'],
+              ['Storage', 'Local SQLite - your data never leaves this machine'],
             ].map(([label, value]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span className="text-muted">{label}</span>
-                <span>{value}</span>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13 }}>
+                <span className="text-muted" style={{ flexShrink: 0 }}>{label}</span>
+                <span style={{ textAlign: 'right' }}>{value}</span>
               </div>
             ))}
           </div>
-        </section>
-
-        {/* Philosophy */}
-        <section className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border-subtle)' }}>
-          <p className="text-muted text-sm" style={{ lineHeight: 1.7, fontStyle: 'italic' }}>
-            "What should I work on right now?"
-          </p>
-          <p className="text-dim text-xs" style={{ marginTop: 6 }}>
-            — The only question Compass is designed to answer.
-          </p>
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={() => openUrl(GITHUB_REPO)}
+              id="settings-star-github"
+              aria-label="Star Compass on GitHub"
+              className="github-star-btn"
+            >
+              <Github size={16} />
+              Star on GitHub
+              <Star size={14} style={{ color: 'var(--warning)' }} fill="var(--warning)" />
+            </button>
+          </div>
         </section>
       </div>
     </div>

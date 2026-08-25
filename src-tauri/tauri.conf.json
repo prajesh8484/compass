@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Compass",
+  "version": "0.1.0",
+  "identifier": "com.compass.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Compass",
+        "width": 1050,
+        "height": 660,
+        "minWidth": 850,
+        "minHeight": 500,
+        "decorations": false,
+        "transparent": false,
+        "shadow": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "Compass",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "copyright": "Copyright © 2026 Compass Contributors",
+    "category": "Productivity",
+    "shortDescription": "Local-first task prioritization.",
+    "longDescription": "Compass is a local-first desktop application that answers one question: what should I work on right now? Your data stays on your machine.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "sql": {
+      "preloadConnections": ["sqlite:compass.db"]
+    }
+  }
+}

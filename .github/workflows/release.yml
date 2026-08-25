@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # cargo check is covered by the full tauri build in the matrix below —
+      # a separate check here would compile everything twice.
+      - run: npm run typecheck
+      - run: npm test
+
+  build:
+    name: Build (${{ matrix.label }})
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows (msi + nsis)
+            os: windows-latest
+            args: ''
+          - label: macOS (universal dmg + app)
+            os: macos-latest
+            args: '--target universal-apple-darwin'
+          - label: Linux (appimage + deb)
+            os: ubuntu-22.04
+            args: ''
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Compass ${{ github.ref_name }}'
+          releaseBody: 'See the assets below to download and install Compass on your platform.'
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

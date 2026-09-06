@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, ArchiveRestore, CheckSquare, Square, Check, Archive, Trash2, FolderEdit, X } from 'lucide-react';
+import { Plus, Search, ArchiveRestore, CheckSquare, Square, Check, Archive, Trash2, FolderEdit, X, AlertCircle } from 'lucide-react';
 import { useTaskStore } from '../stores/useTaskStore';
 import { useProjectStore } from '../stores/useProjectStore';
 import { taskRepository } from '../repositories/taskRepository';
@@ -43,6 +43,9 @@ export function AllTasks() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSectionPrompt, setShowSectionPrompt] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [sectionError, setSectionError] = useState<string | null>(null);
+  const [isSectionShaking, setIsSectionShaking] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? projects[0];
 
@@ -127,22 +130,27 @@ export function AllTasks() {
   };
 
   const handleBulkDelete = async () => {
-    if (window.confirm(`Delete ${selectedIds.size} selected tasks?`)) {
-      const ids = Array.from(selectedIds);
-      await bulkDelete(ids);
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-      await loadAll();
-    }
+    const ids = Array.from(selectedIds);
+    await bulkDelete(ids);
+    setSelectedIds(new Set());
+    setShowDeleteConfirm(false);
+    setSelectionMode(false);
+    await loadAll();
   };
 
   const handleBulkReassign = async () => {
-    if (!newSectionName.trim()) return;
+    if (!newSectionName.trim()) {
+      setSectionError('Please enter a topic name');
+      setIsSectionShaking(true);
+      setTimeout(() => setIsSectionShaking(false), 300);
+      return;
+    }
     const ids = Array.from(selectedIds);
     await bulkReassignSection(ids, newSectionName.trim());
     setSelectedIds(new Set());
     setShowSectionPrompt(false);
     setNewSectionName('');
+    setSectionError(null);
     setSelectionMode(false);
     await loadAll();
   };
@@ -377,54 +385,84 @@ export function AllTasks() {
               zIndex: 1000,
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginRight: 4 }}>
-              {selectedIds.size} selected
-            </span>
+            {showDeleteConfirm ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>
+                  Delete {selectedIds.size} task{selectedIds.size !== 1 ? 's' : ''}?
+                </span>
+                <button
+                  className="btn btn--danger"
+                  style={{ fontSize: 12, padding: '4px 10px', height: 26 }}
+                  onClick={handleBulkDelete}
+                >
+                  Confirm Delete
+                </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: 12, padding: '4px 8px', height: 26 }}
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginRight: 4 }}>
+                  {selectedIds.size} selected
+                </span>
 
-            <button
-              className="btn btn--ghost"
-              style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
-              onClick={handleBulkComplete}
-              data-tooltip="Mark selected as complete"
-            >
-              <Check size={13} color="var(--success)" /> Complete
-            </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
+                  onClick={handleBulkComplete}
+                  data-tooltip="Mark selected as complete"
+                >
+                  <Check size={13} color="var(--success)" /> Complete
+                </button>
 
-            <button
-              className="btn btn--ghost"
-              style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
-              onClick={() => setShowSectionPrompt(true)}
-              data-tooltip="Move to another topic/section"
-            >
-              <FolderEdit size={13} color="var(--accent)" /> Reassign Topic
-            </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
+                  onClick={() => {
+                    setSectionError(null);
+                    setShowSectionPrompt(true);
+                  }}
+                  data-tooltip="Move to another topic/section"
+                >
+                  <FolderEdit size={13} color="var(--accent)" /> Reassign Topic
+                </button>
 
-            <button
-              className="btn btn--ghost"
-              style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
-              onClick={handleBulkArchive}
-              data-tooltip="Archive selected tasks"
-            >
-              <Archive size={13} /> Archive
-            </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: 12, padding: '4px 10px', gap: 6 }}
+                  onClick={handleBulkArchive}
+                  data-tooltip="Archive selected tasks"
+                >
+                  <Archive size={13} /> Archive
+                </button>
 
-            <button
-              className="btn btn--ghost"
-              style={{ fontSize: 12, padding: '4px 10px', gap: 6, color: 'var(--danger)' }}
-              onClick={handleBulkDelete}
-              data-tooltip="Delete selected tasks"
-            >
-              <Trash2 size={13} /> Delete
-            </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ fontSize: 12, padding: '4px 10px', gap: 6, color: 'var(--danger)' }}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  data-tooltip="Delete selected tasks"
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
 
-            <button
-              className="btn btn--icon"
-              style={{ padding: 4, marginLeft: 6 }}
-              onClick={() => setSelectedIds(new Set())}
-              data-tooltip="Clear selection"
-            >
-              <X size={14} />
-            </button>
+                <button
+                  className="btn btn--icon"
+                  style={{ padding: 4, marginLeft: 6 }}
+                  onClick={() => {
+                    setSelectedIds(new Set());
+                    setShowDeleteConfirm(false);
+                  }}
+                  data-tooltip="Clear selection"
+                >
+                  <X size={14} />
+                </button>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -437,17 +475,36 @@ export function AllTasks() {
             <p className="text-muted text-xs" style={{ marginBottom: 14 }}>
               Enter new section/topic name for {selectedIds.size} selected tasks:
             </p>
-            <input
-              className="input input--sm"
-              placeholder="e.g. Frontend, Backend, Docs"
-              value={newSectionName}
-              onChange={(e) => setNewSectionName(e.target.value)}
-              autoFocus
-              autoComplete="off"
-              style={{ marginBottom: 14 }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn btn--ghost" onClick={() => setShowSectionPrompt(false)}>Cancel</button>
+            <div>
+              <input
+                className={`input input--sm ${sectionError ? 'input--error' : ''} ${isSectionShaking ? 'input-shake' : ''}`}
+                placeholder="e.g. Frontend, Backend, Docs"
+                value={newSectionName}
+                onChange={(e) => {
+                  setNewSectionName(e.target.value);
+                  if (sectionError) setSectionError(null);
+                }}
+                autoFocus
+                autoComplete="off"
+                aria-invalid={Boolean(sectionError)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleBulkReassign();
+                  } else if (e.key === 'Escape') {
+                    setShowSectionPrompt(false);
+                  }
+                }}
+              />
+              {sectionError && (
+                <div className="form-error" style={{ marginTop: 4 }}>
+                  <AlertCircle size={12} />
+                  <span>{sectionError}</span>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+              <button className="btn btn--ghost" onClick={() => { setShowSectionPrompt(false); setSectionError(null); }}>Cancel</button>
               <button className="btn btn--primary" onClick={handleBulkReassign}>Reassign</button>
             </div>
           </div>

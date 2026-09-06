@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Plus, FolderOpen } from 'lucide-react';
+import { Plus, FolderOpen, AlertCircle } from 'lucide-react';
 import { useProjectStore } from '../stores/useProjectStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -14,6 +14,8 @@ export function Projects() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPath, setNewPath] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isNameShaking, setIsNameShaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadProjects(); }, []);
@@ -29,8 +31,14 @@ export function Projects() {
   };
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      setNameError('Project name is required');
+      setIsNameShaking(true);
+      setTimeout(() => setIsNameShaking(false), 300);
+      return;
+    }
     setError(null);
+    setNameError(null);
     try {
       await createProject({ name: newName.trim(), folder_path: newPath.trim() });
       setNewName(''); setNewPath(''); setCreating(false);
@@ -74,16 +82,28 @@ export function Projects() {
           style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}
         >
           <h3 style={{ marginBottom: 4 }}>New Project</h3>
-          <input
-            className="input"
-            placeholder="Project name (e.g. My Website)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            autoFocus
-            autoComplete="off"
-            autoCorrect="off"
-            id="project-name-input"
-          />
+          <div>
+            <input
+              className={`input ${nameError ? 'input--error' : ''} ${isNameShaking ? 'input-shake' : ''}`}
+              placeholder="Project name (e.g. My Website)"
+              value={newName}
+              onChange={(e) => {
+                setNewName(e.target.value);
+                if (nameError) setNameError(null);
+              }}
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              id="project-name-input"
+              aria-invalid={Boolean(nameError)}
+            />
+            {nameError && (
+              <div className="form-error">
+                <AlertCircle size={12} />
+                <span>{nameError}</span>
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               className="input"
@@ -98,9 +118,14 @@ export function Projects() {
               <FolderOpen size={14} />
             </button>
           </div>
-          {error && <p className="text-danger text-sm">{error}</p>}
+          {error && (
+            <div className="form-error">
+              <AlertCircle size={12} />
+              <span>{error}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn btn--ghost" onClick={() => { setCreating(false); setError(null); }}>
+            <button className="btn btn--ghost" onClick={() => { setCreating(false); setError(null); setNameError(null); }}>
               Cancel
             </button>
             <button className="btn btn--primary" onClick={handleCreate} id="project-create-submit">

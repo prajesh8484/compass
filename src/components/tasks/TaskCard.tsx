@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Pin, Clock, CheckCircle2, Archive, AlertCircle, RotateCcw } from 'lucide-react';
 import { ScoreBadge } from './ScoreBreakdown';
@@ -61,6 +62,7 @@ export function TaskCard({
   onClick,
   index = 0,
 }: TaskCardProps) {
+  const [blockedWarning, setBlockedWarning] = useState(false);
   const deadline = formatDeadline(task.deadline);
   const timeEst = formatEstimatedTime(task.estimated_minutes);
   const isDone = task.status === 'done';
@@ -71,7 +73,8 @@ export function TaskCard({
   const handleCompleteToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (task.isBlocked && !isDone) {
-      alert('This task is blocked by incomplete dependencies. Complete its prerequisite tasks first!');
+      setBlockedWarning(true);
+      setTimeout(() => setBlockedWarning(false), 2200);
       return;
     }
     if (isDone) {
@@ -102,7 +105,7 @@ export function TaskCard({
     >
       {/* Complete / Reopen button */}
       <button
-        className="btn btn--icon"
+        className={`btn btn--icon ${blockedWarning ? 'input-shake' : ''}`}
         onClick={handleCompleteToggle}
         aria-label={isDone ? 'Reopen task' : task.isBlocked ? 'Blocked by dependency' : 'Mark as complete'}
         data-tooltip={isDone ? 'Completed (Click to Reopen)' : task.isBlocked ? 'Blocked by dependency' : 'Complete'}
@@ -137,17 +140,18 @@ export function TaskCard({
           </span>
           {task.isBlocked && !isDone && (
             <span
-              className="chip"
+              className={`chip ${blockedWarning ? 'input-shake' : ''}`}
               style={{
-                background: 'rgba(235, 87, 87, 0.15)',
+                background: blockedWarning ? 'rgba(235, 87, 87, 0.28)' : 'rgba(235, 87, 87, 0.15)',
                 color: 'var(--danger)',
                 border: '1px solid rgba(235, 87, 87, 0.3)',
                 fontSize: 11,
                 fontWeight: 600,
+                transition: 'all 0.2s ease',
               }}
               data-tooltip="Prerequisites must be completed first"
             >
-              Blocked
+              {blockedWarning ? 'Complete Prerequisites First!' : 'Blocked'}
             </span>
           )}
           {isArchived ? (

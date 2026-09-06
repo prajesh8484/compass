@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import type { CreateTaskPayload, Difficulty } from '../../lib/types';
 import { CustomSelect } from '../ui/CustomSelect';
 import { CustomDatePicker } from '../ui/CustomDatePicker';
@@ -52,6 +52,13 @@ export function NewTaskModal({
   const [deadline, setDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; project?: string; importance?: string }>({});
+  const [shakingField, setShakingField] = useState<string | null>(null);
+
+  const triggerShake = (field: string) => {
+    setShakingField(field);
+    setTimeout(() => setShakingField(null), 300);
+  };
 
   useEffect(() => {
     if (initialProjectId) setProjectId(initialProjectId);
@@ -64,20 +71,38 @@ export function NewTaskModal({
     setDifficulty('medium'); setEstimatedHours('1'); setDeadline('');
     setSection('General');
     setError(null);
+    setFieldErrors({});
+    setShakingField(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: { title?: string; project?: string; importance?: string } = {};
     const targetProjectId = projectId || projects[0]?.id;
+
     if (!targetProjectId) {
-      setError('Please create a project first');
+      newErrors.project = 'Please create a project first';
+    }
+    if (!title.trim()) {
+      newErrors.title = 'Task title is required';
+    }
+    if (isNaN(importance) || importance < 1 || importance > 10) {
+      newErrors.importance = 'Importance must be between 1 and 10';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      if (newErrors.title) triggerShake('title');
+      else if (newErrors.project) triggerShake('project');
+      else if (newErrors.importance) triggerShake('importance');
       return;
     }
-    if (!title.trim()) { setError('Title is required'); return; }
+
     setSubmitting(true);
     setError(null);
+    setFieldErrors({});
     try {
       const minutes = estimatedHours === 'unspecified'
         ? undefined
@@ -158,19 +183,31 @@ export function NewTaskModal({
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} autoComplete="off" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} noValidate autoComplete="off" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <input
-                  className="input"
+                  className={`input ${fieldErrors.title ? 'input--error' : ''} ${shakingField === 'title' ? 'input-shake' : ''}`}
                   placeholder="Task title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                  }}
                   autoFocus
                   autoComplete="off"
                   autoCorrect="off"
                   id="new-task-title"
                   aria-label="Task title"
+                  aria-invalid={Boolean(fieldErrors.title)}
                 />
+                {fieldErrors.title && (
+                  <div className="form-error">
+                    <AlertCircle size={12} />
+                    <span>{fieldErrors.title}</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -182,8 +219,19 @@ export function NewTaskModal({
                     id="new-task-project"
                     options={projects.map((p) => ({ value: p.id, label: p.name }))}
                     value={projectId}
-                    onChange={(val) => setProjectId(val)}
+                    onChange={(val) => {
+                      setProjectId(val);
+                      if (fieldErrors.project) {
+                        setFieldErrors((prev) => ({ ...prev, project: undefined }));
+                      }
+                    }}
                   />
+                  {fieldErrors.project && (
+                    <div className="form-error">
+                      <AlertCircle size={12} />
+                      <span>{fieldErrors.project}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-muted text-xs" style={{ display: 'block', marginBottom: 6 }} htmlFor="new-task-section">
@@ -221,12 +269,25 @@ export function NewTaskModal({
                   </label>
                   <input
                     id="new-task-importance"
-                    className="input input--sm"
+                    className={`input input--sm ${fieldErrors.importance ? 'input--error' : ''} ${shakingField === 'importance' ? 'input-shake' : ''}`}
                     type="number"
                     min={1} max={10}
                     value={importance}
-                    onChange={(e) => setImportance(parseInt(e.target.value) || 5)}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setImportance(isNaN(val) ? 5 : val);
+                      if (fieldErrors.importance) {
+                        setFieldErrors((prev) => ({ ...prev, importance: undefined }));
+                      }
+                    }}
+                    aria-invalid={Boolean(fieldErrors.importance)}
                   />
+                  {fieldErrors.importance && (
+                    <div className="form-error">
+                      <AlertCircle size={12} />
+                      <span>{fieldErrors.importance}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-muted text-xs" style={{ display: 'block', marginBottom: 6 }} htmlFor="new-task-difficulty">
@@ -268,7 +329,10 @@ export function NewTaskModal({
               </div>
 
               {error && (
-                <p className="text-danger text-sm">{error}</p>
+                <div className="form-error" style={{ marginTop: 2 }}>
+                  <AlertCircle size={13} />
+                  <span>{error}</span>
+                </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
@@ -279,7 +343,7 @@ export function NewTaskModal({
                   id="new-task-submit"
                   type="submit"
                   className="btn btn--primary"
-                  disabled={submitting || !title.trim()}
+                  disabled={submitting}
                 >
                   {submitting ? 'Creating…' : 'Create Task'}
                 </button>

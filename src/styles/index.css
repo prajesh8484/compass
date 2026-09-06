@@ -189,6 +189,61 @@ h4 { font-size: 13px; font-weight: 500; }
 }
 
 /* ─────────────────────────────────────────
+   macOS Window Controls (Traffic Lights)
+   ───────────────────────────────────────── */
+.titlebar__controls-mac {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__btn-mac {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.titlebar__btn-mac svg {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.titlebar__controls-mac:hover .titlebar__btn-mac svg {
+  opacity: 1;
+}
+
+.titlebar__btn-mac--close {
+  background: #ff5f56;
+  border: 0.5px solid #e0443e;
+}
+
+.titlebar__btn-mac--min {
+  background: #ffbd2e;
+  border: 0.5px solid #dea123;
+}
+
+.titlebar__btn-mac--max {
+  background: #27c93f;
+  border: 0.5px solid #1aab29;
+}
+
+.titlebar__btn-mac:active {
+  filter: brightness(0.85);
+}
+
+/* ─────────────────────────────────────────
    Sidebar
    ───────────────────────────────────────── */
 .sidebar {

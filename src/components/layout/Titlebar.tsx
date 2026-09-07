@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Minus, Square, X, Timer, Plus } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AppLogo } from '../ui/AppLogo';
@@ -14,8 +15,38 @@ function getPlatform(): 'macos' | 'windows' | 'linux' {
 export function Titlebar() {
   const win = getCurrentWindow();
   const { isRunning, timeLeft } = useTimerStore();
+  const [isMaximized, setIsMaximized] = useState(false);
   const platform = getPlatform();
   const isMac = platform === 'macos';
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    const checkMaximized = async () => {
+      try {
+        const max = await win.isMaximized();
+        setIsMaximized(max);
+      } catch {
+        // ignore if not running in tauri runtime
+      }
+    };
+    checkMaximized();
+
+    win.onResized(() => {
+      checkMaximized();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [win]);
+
+  const handleToggleMaximize = async () => {
+    await win.toggleMaximize();
+    const max = await win.isMaximized();
+    setIsMaximized(max);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -24,7 +55,12 @@ export function Titlebar() {
   };
 
   return (
-    <div className="titlebar" style={{ paddingLeft: isMac ? 0 : 12 }}>
+    <div
+      className="titlebar"
+      data-tauri-drag-region
+      onDoubleClick={handleToggleMaximize}
+      style={{ paddingLeft: isMac ? 0 : 12 }}
+    >
       {/* macOS Traffic Lights (Left-aligned) */}
       {isMac && (
         <div className="titlebar__controls-mac">
@@ -46,7 +82,7 @@ export function Titlebar() {
           </button>
           <button
             className="titlebar__btn-mac titlebar__btn-mac--max"
-            onClick={() => win.toggleMaximize()}
+            onClick={handleToggleMaximize}
             aria-label="Zoom"
             title="Zoom"
           >
@@ -56,7 +92,11 @@ export function Titlebar() {
       )}
 
       {/* App Branding & Sprint Timer Pill */}
-      <div className="titlebar__app-name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div
+        className="titlebar__app-name"
+        data-tauri-drag-region
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+      >
         <AppLogo size={16} />
         <span>Compass</span>
         {isRunning && (
@@ -81,11 +121,18 @@ export function Titlebar() {
           </button>
           <button
             className="titlebar__btn-win titlebar__btn-win--max"
-            onClick={() => win.toggleMaximize()}
-            aria-label="Maximize"
-            title="Maximize"
+            onClick={handleToggleMaximize}
+            aria-label={isMaximized ? 'Restore' : 'Maximize'}
+            title={isMaximized ? 'Restore' : 'Maximize'}
           >
-            <Square size={14} />
+            {isMaximized ? (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M4 5V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2" />
+                <rect x="2" y="5" width="9" height="9" rx="1" />
+              </svg>
+            ) : (
+              <Square size={13} />
+            )}
           </button>
           <button
             className="titlebar__btn-win titlebar__btn-win--close"
